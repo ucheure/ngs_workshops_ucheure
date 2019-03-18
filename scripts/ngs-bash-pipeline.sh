@@ -27,6 +27,7 @@ SCRIPT_NAME=$0 # google this: what does $0 mean in a shell script
 ## software requirements     ##
 ###############################
 # conda
+# bioconda https://katacoda.com/sjnewhouse/scenarios/bioconda_genmed
 # fastqc
 # trimmomatic
 # bwa
@@ -72,7 +73,7 @@ freebayes_cpu="36" ## This is every core on your machine!
 ##                            make-project-dir.sh <project_dir_name>
 ##
 SHARED_DIRECTORY="${HOME}/share/projects"
-MY_PERSONAL_DIRECTORY="xsjnewhouse" ## name of your personal folder
+MY_PERSONAL_DIRECTORY="xsjnewhouse" ## name of your personal folder eg group_1, group_2, group_3, group_4
 FASTQ_DIR="${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/fastq"
 ALIGNMENT_DIR="${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/alignments"
 VCF_DIR="${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/variant_calls"
