@@ -82,6 +82,9 @@ REPORTS_DIR="${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/reports"
 ## Set temp directory used with various tools
 temp_directory="${HOME}/share/projects/${MY_PERSONAL_DIRECTORY}/ngs_project/temp"
 
+## move to your ngs_projects dir
+cd ${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/
+tree ${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/
 
 #######################################
 ## Symbolinc links to some test data ##
