@@ -3,10 +3,25 @@ set -o nounset ## QUESTION: Google these settings to find out what they mean.
 set -o errexit
 set -o pipefail
 
+## its good practice to tell user who you are and how to get hold of you
+
+###############################################
+## ngs-bash-pipeline                         ##
+###############################################
+##
+## Author: Stephen Newhouse
+## Email: stephen.j.newhouse@gmail.com
+## GitUrl: link to github code base
+## Version: 0.1.0
+## License: Add a License (see https://help.github.com/en/articles/licensing-a-repository and https://choosealicense.com/)
+##
+###############################################
+
 ###############################
 ## NGS Bash Pipeline Version ##
 ###############################
 VERSION="0.1.0"
+SCRIPT_NAME=$0 # google this: what does $0 mean in a shell script
 
 ###############################
 ## software requirements     ##
@@ -26,8 +41,11 @@ VERSION="0.1.0"
 # tabix
 # parallel
 # awscli
-
-
+# 
+# All software, databases and reference genomes has bee pre-installed
+# this took hours to set up once automated using scripts
+# 3 - 4 working days of trial and error and testing before automating it
+# with install scripts 
 
 ###############################
 ## Some basic compute set up ##
@@ -41,7 +59,7 @@ export PATH="${HOME}/share/software/annovar:$PATH"
 ## Set number of cpu (cores) to use for various steps in the pipeline
 trimmomatic_cpu="12"
 bwa_cpu="30"
-freebayes_cpu="36"
+freebayes_cpu="36" ## This is every core on your machine!
 
 #########################################
 ## Set pipeline input/output directory ##
@@ -49,8 +67,10 @@ freebayes_cpu="36"
 ## Student data processing to go here
 ## /home/ubuntu/share/projects
 ## EG mine would be /home/ubuntu/share/projects/xsjnewhouse
+##
 ## YOU NEED TO RUN THIS FIRST:
-##                            make-project-dir.sh <project dir name>
+##                            make-project-dir.sh <project_dir_name>
+##
 SHARED_DIRECTORY="${HOME}/share/projects"
 MY_PERSONAL_DIRECTORY="xsjnewhouse" ## name of your personal folder
 FASTQ_DIR="${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/fastq"
@@ -77,6 +97,8 @@ temp_directory="${HOME}/share/projects/${MY_PERSONAL_DIRECTORY}/ngs_project/temp
 ln -s ${HOME}/share/ngs_data/fastq/workshop_data/WES01_chr22_R1.fastq.gz ${FASTQ_DIR}/WES01_chr22_R1.fastq.gz;
 ln -s ${HOME}/share/ngs_data/fastq/workshop_data/WES01_chr22_R2.fastq.gz ${FASTQ_DIR}/WES01_chr22_R2.fastq.gz;
 
+tree ${FASTQ_DIR}
+
 ############################
 ## Some basic data set up ##
 ############################
@@ -87,23 +109,39 @@ READ2="${FASTQ_DIR}/${2:-WES01_chr22_R2.fastq.gz}" # a default value has been se
 
 FASTQ_BASE_NAME=$(basename ${READ1} .fastq.gz) ## change the extenstion to match your data e.g it might be .fq or .fq.gz
 
-## BASIC READ GROUP INFORMATION 
+##################################
+## BASIC READ GROUP INFORMATION ##
+##################################
+##
 ## https://gatkforums.broadinstitute.org/gatk/discussion/6472/read-groups
+##
+## From the Galaxy workshop data:
+## @HWI-D00119:50:H7AP8ADXX:1:1212:10369:36657/1
+## The unique instrument name: HWI-D00119
+## The run id: 50
+## The flowcell id: H7AP8ADXX
+## The flowcell lane: 1
+
 RG_SM="SJN" ## Use any unique short name or your initials 
 RG_PLATFORM="ILLUMINA"
-RG_PLATFORM_UNIT="" ## get this from the fastq files (FLowcell id)
-RG_LIBRARY="" ## make something up
+RG_PLATFORM_UNIT="HWI-D00119" ## get this from the fastq files (Machine id)
+RG_LIBRARY="WEX" ## make something up, short and sweet
 RG_DATE=$(date +%Y-%m-%d) ## auto generated
-FLOWCELL_LANE="" ## get this from the fastq files 
-RG_ID="${RG_SM}.${RG_PLATFORM_UNIT}.${FLOWCELL_LANE}"
+FLOWCELL_ID="H7AP8ADXX" ## get this from the fastq files
+FLOWCELL_LANE="1" ## get this from the fastq files
+RG_ID="${RG_SM}.${RG_PLATFORM_UNIT}.${FLOWCELL_ID}.${FLOWCELL_LANE}"
 
-## THE REFERENCE GENOME
+##########################
+## THE REFERENCE GENOME ##
+##########################
 REF_GENOME_DIR="${HOME}/share/ngs_data/references/Homo_sapiens/GATK/hg19"
 REF_GENOME_VERSION="hg19"
 REF_GENOME_FASTA="${REF_GENOME_DIR}/ucsc.hg19.fasta"
 REF_GENOME_PREFIX=$(basename ${REF_GENOME_FASTA} .fasta)
 
-## ANNOTATION DATABASES
+##########################
+## ANNOTATION DATABASES ##
+##########################
 PATH_TO_ANNOVAR_DB="${HOME}/share/software/annovar"
 
 ####################
@@ -121,7 +159,8 @@ fatsqc --threads 2 ${READ1} ${READ2}
 
 
 # set adapter sequence fasta file
-ADAPTER_FASTA="${HOME}/anaconda3/share/trimmomatic/adapters"
+ADAPTER_FASTA="${HOME}/anaconda3/share/trimmomatic/adapters/all.fa" # I've concatenated all adapter 
+# this is probabaly not a good idea...but for some exanmple 
 
 # set name for trimmomatic paired output
 QCD_PE_FASTQ_R1=${FASTQ_BASE_NAME}.paired-trimmed.fq.gz
@@ -150,7 +189,7 @@ fastqc \
 ${FASTQ_DIR}/${QCD_PE_FASTQ_R1} \
 ${FASTQ_DIR}/${QCD_PE_FASTQ_R2} \
 ${FASTQ_DIR}/${QCD_SE_FASTQ_R1} \
-${FASTQ_DIR}/${QCD_SE_FASTQ_R2};
+${FASTQ_DIR}/${QCD_SE_FASTQ_R2} 2> ${FASTQ_DIR}/${FASTQ_BASE_NAME}.trim_out.log; # https://multiqc.info/docs/#trimmomatic
 
 ## QUESTION: what does the && mean?
 
@@ -195,6 +234,7 @@ sambamba index --threads=${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam;
 
 ## Custom utils from bcbio 
 ## Taken from https://github.com/chapmanb/bcbio-nextgen/blob/98c75603907cb22a3e4cd4fd78f7e995b80bddfd/bcbio/variation/vcfutils.py#L76
+## this converts ambigous bases KMRYSWBVHDX to N
 function fix_ambiguous() {
 
   awk -F$'\t' -v OFS='\t' '{if ($0 !~ /^#/) gsub(/[KMRYSWBVHDX]/, "N", $4) } {print}'
@@ -210,9 +250,13 @@ bamtools coverage -in ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
 ## usage: freebayes-parallel [regions file] [ncpus] [freebayes arguments]
 ## lots of piped post processing for downstream analysis in Annovar etc
 
-## Move to dir that contains freebayes-parallel script 
+## Might need to move to dir that contains freebayes-parallel script 
 ## recommended by software authors
-cd /home/ubuntu/anaconda3/bin/
+## looks like bioconda folks have updated freebayes-parallel to 
+## look for other software in global PATH i.e anaconda3/bin/
+## remove comment if the freebayes call does not work
+##
+# cd /home/ubuntu/anaconda3/bin/
 
 ## run freebayes-parallel
 freebayes-parallel \
@@ -229,6 +273,7 @@ ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
 | vt normalize -r ${REF_GENOME_FASTA} -q - 2> /dev/null \
 | bgzip -c > ${VCF_DIR}/${BAM_PREFIX}.norm.vcf.gz;
 
+## Index the VCF File
 tabix ${VCF_DIR}/${BAM_PREFIX}.norm.vcf.gz;
 
 ## move back to your personal directory
@@ -238,6 +283,7 @@ cd ${MY_PERSONAL_DIRECTORY}
 
 ## 6.1 ANNOVAR
 
+## Set VCF File to annotate
 VCF_TO_ANNOTATE="${VCF_DIR}/${BAM_PREFIX}.norm.vcf.gz"
 
 ## run annovar
@@ -245,35 +291,72 @@ table_annovar.pl \
 ${VCF_TO_ANNOTATE} \
 ${PATH_TO_ANNOVAR_DB}/humandb/ \
 -buildver hg19 \
--out ${VCF_TO_ANNOTATE}.annovar \
+-out ${ANNOTATIONS_DIR}/${BAM_PREFIX}.norm.vcf.annovar.csv \
 -remove \
 -protocol refGene,cytoBand,exac03,avsnp147,dbnsfp30a,clinvar_20180603,ljb26_all \
 -operation gx,r,f,f,f,f,f \
 -nastring . \
 -csvout \
 -polish \
--vcfinput
+-vcfinput;
 
 ## 6.2 snpeff
-snpeff 
+snpEff eff \
+-download \
+-csvStats ${ANNOTATIONS_DIR}/${BAM_PREFIX}.norm.vcf.snpeff.csv \
+-htmlStatsv ${ANNOTATIONS_DIR}/${BAM_PREFIX}.norm.vcf.snpEff_summary.html \
+-i vcf \
+-o vcf \
+-lof \
+-t \
+hg19 \
+${VCF_TO_ANNOTATE};
 
 
-## 7.0 QC report generation -----------------------------------------------##
+## 7.0 QC report generation & MultiQC -----------------------------------------------##
+## See https://multiqc.info/docs
+## we are going to use MultiQC to make a nice html QC report
+## We will generate some basic alignemt stats first 
+## have a look at the MultiQC documentation 
+## and see if there are any other tools you would like to run
+## feel free to edit code below and add to it
+
+## move to reports file
 cd ${REPORTS_DIR}
 
+## make symbolic links to bam files
+## add them to the QC folder
+
 ln -s ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam ${REPORTS_DIR}/${BAM_PREFIX}.filtered.bam
-ln -s ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam ${REPORTS_DIR}/${BAM_PREFIX}.filtered.bam.bai
+ln -s ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam.bai ${REPORTS_DIR}/${BAM_PREFIX}.filtered.bam.bai
+
 ln -s ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam ${REPORTS_DIR}/${BAM_PREFIX}.dupemk.bam
-ln -s ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam ${REPORTS_DIR}/${BAM_PREFIX}.dupemk.bam.bai
+ln -s ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam.bai ${REPORTS_DIR}/${BAM_PREFIX}.dupemk.bam.bai
 
+ls -l
+
+## a Loop...
+## this may be a little long winded and could be sped up 
+## using parallel, but that is for another time...
+## 
 for my_bam in ${REPORTS_DIR}/${BAM_PREFIX}.filtered.bam ${REPORTS_DIR}/${BAM_PREFIX}.dupemk.bam;do
-	samtools flagstat ${my_bam} && \
+	echo "LOG: QC reports: Start processing ${my_bam} $(date)"
+	## samtools
+	samtools flagstat --threads 10 ${my_bam} && \
+	## bamtools
 	bamtools stats ${my_bam} && \
-	picard CollectInsertSizeMetrics && \
-	picard CollectMultipleMetrics && \
+	## picard
+	picard CollectInsertSizeMetrics \
+	I=${my_bam} \
+	O=${my_bam}.insert_size_metrics.txt \
+	H=${my_bam}.insert_size_histogram.pdf;
+	echo "LOG: QC reports: Done processing ${my_bam} $(date)"
+done
 
+## Run MultiQC
 
-## MultiQC
+cd ${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project
+
 multiqc ${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/
 
 
