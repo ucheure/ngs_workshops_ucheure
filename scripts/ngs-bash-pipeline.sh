@@ -111,7 +111,7 @@ tree ${FASTQ_DIR}
 READ1="${FASTQ_DIR}/${1:-WES01_chr22_R1.fastq.gz}" # you can set this here or take it from the command line
 READ2="${FASTQ_DIR}/${2:-WES01_chr22_R2.fastq.gz}" # a default value has been set to point to ${FASTQ_DIR}/WES01_chr22_R{1,2}.fastq.gz
 
-FASTQ_BASE_NAME=$(basename ${READ1} .fastq.gz) ## change the extenstion to match your data e.g it might be .fq or .fq.gz
+FASTQ_BASE_NAME=$(basename ${READ1} _R1.fastq.gz) ## change the extenstion to match your data e.g it might be .fq or .fq.gz
 
 ##################################
 ## BASIC READ GROUP INFORMATION ##
@@ -153,47 +153,45 @@ PATH_TO_ANNOVAR_DB="${HOME}/share/software/annovar"
 ####################
 
 ## Move to you personal directory
-cd ${MY_PERSONAL_DIRECTORY}
+cd ${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/
 
 ## 1.0 fatsqc ---------------------------------------------------=##
 
-fatsqc --threads 2 ${READ1} ${READ2}
+fastqc --threads 2 ${READ1} ${READ2}
 
 ## 2.0 trimmomatic -----------------------------------------------##
 
-
 # set adapter sequence fasta file
-ADAPTER_FASTA="${HOME}/anaconda3/share/trimmomatic/adapters/all.fa" # I've concatenated all adapter 
+ADAPTER_FASTA="${HOME}/anaconda3/share/trimmomatic/adapters/NexteraPE-PE.fa" # I've concatenated all adapter 
 # this is probabaly not a good idea...but for some exanmple 
 
 # set name for trimmomatic paired output
-QCD_PE_FASTQ_R1=${FASTQ_BASE_NAME}.paired-trimmed.fq.gz
-QCD_PE_FASTQ_R2=${FASTQ_BASE_NAME}.paired-trimmed.fq.gz
+QCD_PE_FASTQ_R1=${FASTQ_BASE_NAME}.R1.paired-trimmed.fq
+QCD_PE_FASTQ_R2=${FASTQ_BASE_NAME}.R2.paired-trimmed.fq
 
 # set name for trimmomatic unpaired ouput
-QCD_SE_FASTQ_R1=${FASTQ_BASE_NAME}.unpaired-trimmed.fq.gz
-QCD_SE_FASTQ_R2=${FASTQ_BASE_NAME}.unpaired-trimmed.fq.gz
+QCD_SE_FASTQ_R1=${FASTQ_BASE_NAME}.R1.unpaired-trimmed.fq
+QCD_SE_FASTQ_R2=${FASTQ_BASE_NAME}.R2.unpaired-trimmed.fq
 
 # RUN Trimmomatic followed by Fastqc on trimmed files
-trimmomatic \
-PE \
--phred64 \
+trimmomatic PE \
 -threads ${trimmomatic_cpu} \
 -trimlog ${FASTQ_DIR}/${FASTQ_BASE_NAME}_trimmomatic_qc.log \
-${FASTQ_DIR}/${READ1} ${FASTQ_DIR}/${READ2} \
-${FASTQ_DIR}/${QCD_PE_FASTQ_R1} ${FASTQ_DIR}/${QCD_PE_FASTQ_R2} \
-${FASTQ_DIR}/${QCD_SE_FASTQ_R1} ${FASTQ_DIR}/${QCD_SE_FASTQ_R2} \
+${READ1} ${READ2} \
+${FASTQ_DIR}/${QCD_PE_FASTQ_R1} ${FASTQ_DIR}/${QCD_SE_FASTQ_R1} \
+${FASTQ_DIR}/${QCD_PE_FASTQ_R2} ${FASTQ_DIR}/${QCD_SE_FASTQ_R2} \
 ILLUMINACLIP:${ADAPTER_FASTA}:2:30:10:5:true \
 LEADING:3 \
 TRAILING:3 \
 SLIDINGWINDOW:4:15 \
-MINLEN:50 && \
+MINLEN:50; ## https://multiqc.info/docs/#trimmomatic
+
 fastqc \
 --threads 4 \
 ${FASTQ_DIR}/${QCD_PE_FASTQ_R1} \
 ${FASTQ_DIR}/${QCD_PE_FASTQ_R2} \
 ${FASTQ_DIR}/${QCD_SE_FASTQ_R1} \
-${FASTQ_DIR}/${QCD_SE_FASTQ_R2} 2> ${FASTQ_DIR}/${FASTQ_BASE_NAME}.trim_out.log; # https://multiqc.info/docs/#trimmomatic
+${FASTQ_DIR}/${QCD_SE_FASTQ_R2} 
 
 ## QUESTION: what does the && mean?
 
@@ -218,8 +216,10 @@ ${REF_GENOME_FASTA} \
 ${FASTQ_DIR}/${QCD_PE_FASTQ_R1} ${FASTQ_DIR}/${QCD_PE_FASTQ_R2} \
 | samblaster --addMateTags --excludeDups \
 | sambamba view -t ${bwa_cpu} -S -f bam /dev/stdin \
-| sambamba sort -t ${bwa_cpu} -m 4GB --tmpdir=${temp_directory} -o ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam /dev/stdin && \
-sambamba index --threads=${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam
+| sambamba sort -t ${bwa_cpu} -m 4GB \
+--tmpdir=${temp_directory} \
+-o ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam /dev/stdin && \
+sambamba index -t ${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam
 
 
 ## 4.0 Post Alingment Processing -----------------------------------------------##
@@ -230,10 +230,10 @@ sambamba index --threads=${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam
 
 ## Basic Filter BAM 
 samtools view -bh -q 20 -F 1796 ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam > ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam && \
-sambamba index --threads=${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam;
+sambamba index -t ${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam;
 
-
-
+#Total Sequences	505987
+#Total Sequences	505987
 ## 5.0 Variant Calling: Freebayes -----------------------------------------------##
 
 ## Custom utils from bcbio 
@@ -247,8 +247,8 @@ function fix_ambiguous() {
 
 ## Generate regions that are equal in terms of data content, and thus have lower variance
 ## in runtime.  This will yield better resource utilization.
-bamtools coverage -in ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
-| coverage_to_regions.py ${REF_GENOME_FASTA} 500 > ${REF_GENOME_FASTA}.500.regions;
+#bamtools coverage -in ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
+#| coverage_to_regions.py ${REF_GENOME_FASTA} 500 > ${REF_GENOME_FASTA}.500.regions;
 
 ## Freebayes Parallel
 ## usage: freebayes-parallel [regions file] [ncpus] [freebayes arguments]
@@ -263,8 +263,7 @@ bamtools coverage -in ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
 # cd /home/ubuntu/anaconda3/bin/
 
 ## run freebayes-parallel
-freebayes-parallel \
-${REF_GENOME_FASTA}.500.regions \
+freebayes-parallel <(fasta_generate_regions.py ${REF_GENOME_FASTA}.fai 100000) \
 ${freebayes_cpu} \
 -f ${REF_GENOME_FASTA} \
 --standard-filters \
