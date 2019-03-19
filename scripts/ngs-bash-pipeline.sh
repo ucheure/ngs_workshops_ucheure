@@ -162,8 +162,7 @@ fastqc --threads 2 ${READ1} ${READ2}
 ## 2.0 trimmomatic -----------------------------------------------##
 
 # set adapter sequence fasta file
-ADAPTER_FASTA="${HOME}/anaconda3/share/trimmomatic/adapters/NexteraPE-PE.fa" # I've concatenated all adapter 
-# this is probabaly not a good idea...but for some exanmple 
+ADAPTER_FASTA="${HOME}/anaconda3/share/trimmomatic/adapters/NexteraPE-PE.fa" 
 
 # set name for trimmomatic paired output
 QCD_PE_FASTQ_R1=${FASTQ_BASE_NAME}.R1.paired-trimmed.fq
@@ -269,15 +268,15 @@ ${freebayes_cpu} \
 --standard-filters \
 --min-coverage 4 \
 ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
-| vcffilter -f "QUAL > 10 & QUAL / AO > 10 & SAF > 0 & SAR > 0 & RPR > 1 & RPL > 1" -s \
+| vcffilter -f "QUAL > 1 & QUAL / AO > 10 & SAF > 0 & SAR > 0 & RPR > 1 & RPL > 1" -s \
 | fix_ambiguous \
 | vcfallelicprimitives --keep-geno \
 | vcffixup - \
 | vt normalize -r ${REF_GENOME_FASTA} -q - 2> /dev/null \
-| bgzip -c > ${VCF_DIR}/${BAM_PREFIX}.norm.vcf.gz;
+| bgzip -c > ${VCF_DIR}/${BAM_PREFIX}.freebayes.norm.vcf.gz;
 
 ## Index the VCF File
-tabix ${VCF_DIR}/${BAM_PREFIX}.norm.vcf.gz;
+tabix ${VCF_DIR}/${BAM_PREFIX}.freebayes.norm.vcf.gz;
 
 ## move back to your personal directory
 cd ${MY_PERSONAL_DIRECTORY}
@@ -287,14 +286,14 @@ cd ${MY_PERSONAL_DIRECTORY}
 ## 6.1 ANNOVAR
 
 ## Set VCF File to annotate
-VCF_TO_ANNOTATE="${VCF_DIR}/${BAM_PREFIX}.norm.vcf.gz"
+VCF_TO_ANNOTATE="${VCF_DIR}/${BAM_PREFIX}.freebayes.norm.vcf.gz"
 
 ## run annovar
 table_annovar.pl \
 ${VCF_TO_ANNOTATE} \
 ${PATH_TO_ANNOVAR_DB}/humandb/ \
 -buildver hg19 \
--out ${ANNOTATIONS_DIR}/${BAM_PREFIX}.norm.vcf.annovar.csv \
+-out ${ANNOTATIONS_DIR}/${BAM_PREFIX}.freebayes.norm.vcf.annovar.csv \
 -remove \
 -protocol refGene,cytoBand,exac03,avsnp147,dbnsfp30a,clinvar_20180603,ljb26_all \
 -operation gx,r,f,f,f,f,f \
@@ -306,8 +305,8 @@ ${PATH_TO_ANNOVAR_DB}/humandb/ \
 ## 6.2 snpeff
 snpEff eff \
 -download \
--csvStats ${ANNOTATIONS_DIR}/${BAM_PREFIX}.norm.vcf.snpeff.csv \
--htmlStatsv ${ANNOTATIONS_DIR}/${BAM_PREFIX}.norm.vcf.snpEff_summary.html \
+-csvStats ${ANNOTATIONS_DIR}/${BAM_PREFIX}.freebayes.norm.vcf.snpeff.csv \
+-htmlStatsv ${ANNOTATIONS_DIR}/${BAM_PREFIX}.freebayes.norm.vcf.snpEff_summary.html \
 -i vcf \
 -o vcf \
 -lof \
