@@ -237,8 +237,7 @@ sambamba index -t ${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam
 samtools view -bh -q 20 -F 1796 ${ALIGNMENT_DIR}/${BAM_PREFIX}.dupemk.bam > ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam && \
 sambamba index -t ${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam;
 
-#Total Sequences	505987
-#Total Sequences	505987
+
 ## 5.0 Variant Calling: Freebayes -----------------------------------------------##
 
 ## Custom utils from bcbio 
@@ -281,14 +280,14 @@ function fix_ambiguous() {
 
 
 ## run freebayes-parallel
-## callable regions
+## get callable regions
 samtools view -bf 0x2 ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
 | bedtools bamtobed -i stdin \
 | bedtools mergebed -i stdin \
 | bedtools sort -i stdin \
 | awk '{print $1":"$2"-"$3}' > ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam.callable_regions.txt
 
-
+## run freebayes-parallel
 freebayes-parallel ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam.callable_regions.txt \
 ${freebayes_cpu} \
 -f ${REF_GENOME_FASTA} \
