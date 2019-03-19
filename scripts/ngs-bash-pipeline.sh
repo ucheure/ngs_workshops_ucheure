@@ -56,6 +56,14 @@ PROGRAME_NAME="ngs-bash-pipeline.sh"
 ## tells the computer where the software is installed
 export PATH="$HOME/anaconda3/bin:$PATH"
 export PATH="${HOME}/share/software/annovar:$PATH"
+## Custom utils from bcbio 
+## Taken from https://github.com/chapmanb/bcbio-nextgen/blob/98c75603907cb22a3e4cd4fd78f7e995b80bddfd/bcbio/variation/vcfutils.py#L76
+## this converts ambigous bases KMRYSWBVHDX to N
+function fix_ambiguous() {
+
+  awk -F$'\t' -v OFS='\t' '{if ($0 !~ /^#/) gsub(/[KMRYSWBVHDX]/, "N", $4) } {print}'
+
+}
 
 ## Set number of cpu (cores) to use for various steps in the pipeline
 trimmomatic_cpu="12"
@@ -239,15 +247,6 @@ sambamba index -t ${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam;
 
 
 ## 5.0 Variant Calling: Freebayes -----------------------------------------------##
-
-## Custom utils from bcbio 
-## Taken from https://github.com/chapmanb/bcbio-nextgen/blob/98c75603907cb22a3e4cd4fd78f7e995b80bddfd/bcbio/variation/vcfutils.py#L76
-## this converts ambigous bases KMRYSWBVHDX to N
-function fix_ambiguous() {
-
-  awk -F$'\t' -v OFS='\t' '{if ($0 !~ /^#/) gsub(/[KMRYSWBVHDX]/, "N", $4) } {print}'
-
-}
 
 ## Generate regions that are equal in terms of data content, and thus have lower variance
 ## in runtime.  This will yield better resource utilization.
