@@ -22,7 +22,7 @@ set -o pipefail
 ###############################
 VERSION="0.1.0"
 SCRIPT_NAME=$0 # google this: what does $0 mean in a shell script
-
+PROGRAME_NAME="ngs-bash-pipeline.sh"
 ###############################
 ## software requirements     ##
 ###############################
@@ -110,8 +110,11 @@ tree ${FASTQ_DIR}
 ## FASTQ FILES
 READ1="${FASTQ_DIR}/${1:-WES01_chr22_R1.fastq.gz}" # you can set this here or take it from the command line
 READ2="${FASTQ_DIR}/${2:-WES01_chr22_R2.fastq.gz}" # a default value has been set to point to ${FASTQ_DIR}/WES01_chr22_R{1,2}.fastq.gz
+echo "_LOG_:[${PROGRAME_NAME}][Version:${VERSION}]: Fastq Read_1 set as: ${READ1} --- [$(date)]"
+echo "_LOG_:[${PROGRAME_NAME}][Version:${VERSION}]: Fastq Read_2 set as: ${READ2} --- [$(date)]"
 
 FASTQ_BASE_NAME=$(basename ${READ1} _R1.fastq.gz) ## change the extenstion to match your data e.g it might be .fq or .fq.gz
+
 
 ##################################
 ## BASIC READ GROUP INFORMATION ##
@@ -134,6 +137,7 @@ RG_DATE=$(date +%Y-%m-%d) ## auto generated
 FLOWCELL_ID="H7AP8ADXX" ## get this from the fastq files
 FLOWCELL_LANE="1" ## get this from the fastq files
 RG_ID="${RG_SM}.${RG_PLATFORM_UNIT}.${FLOWCELL_ID}.${FLOWCELL_LANE}"
+echo "_LOG: Read Group ID set as: ${RG_ID} --- [$(date)]"
 
 ##########################
 ## THE REFERENCE GENOME ##
@@ -157,7 +161,9 @@ cd ${SHARED_DIRECTORY}/${MY_PERSONAL_DIRECTORY}/ngs_project/
 
 ## 1.0 fatsqc ---------------------------------------------------=##
 
+echo "_LOG: Start FastQC --- [$(date)]"
 fastqc --threads 2 ${READ1} ${READ2}
+echo "_LOG: End FastQC --- [$(date)"
 
 ## 2.0 trimmomatic -----------------------------------------------##
 
