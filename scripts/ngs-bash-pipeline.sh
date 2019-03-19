@@ -270,25 +270,41 @@ sambamba index -t ${bwa_cpu} ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam;
 
 ############################################################################
 ## TASK: Write a command to call variants using samtools, bcftools: 
-## see https://github.com/samtools/bcftools/wiki/HOWTOs#mpileup-calling
+## see https://github.com/samtools/bcftools/wiki/HOWTOs#mpileup-calling and
+## https://samtools.github.io/bcftools/howtos/variant-calling.html
 #############################################################################
 
 
 ## Call variants using samtools and bcftools
+echo "_LOG_:[${PROGRAME_NAME}][Version:${VERSION}]: SART Variant Calling: bcftools --- [$(date)]"
 
+bcftools mpileup \
+-Ou \
+-f ${REF_GENOME_FASTA} \
+${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
+| bcftools call \
+-mv \
+-Oz \
+-o ${VCF_DIR}/${BAM_PREFIX}.bcftools.calls.vcf.gz
 
+bcftools filter -g3 -G10 -i '%QUAL>20 && DP > 10' \
+${VCF_DIR}/${BAM_PREFIX}.bcftools.calls.vcf.gz \
+| vt normalize -r ${REF_GENOME_FASTA} -q - 2> /dev/null \
+| bgzip -c > ${VCF_DIR}/${BAM_PREFIX}.bcftools.norm.vcf.gz &
+
+echo "_LOG_:[${PROGRAME_NAME}][Version:${VERSION}]: END Variant Calling: bcftools --- [$(date)]"
 
 ## run freebayes-parallel
 ## get callable regions
 samtools view -bf 0x2 ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
 | bedtools bamtobed -i stdin \
-| bedtools mergebed -i stdin \
+| bedtools merge -i stdin \
 | bedtools sort -i stdin \
 | awk '{print $1":"$2"-"$3}' > ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam.callable_regions.txt
 
-## run freebayes-parallel
-freebayes-parallel ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam.callable_regions.txt \
-${freebayes_cpu} \
+## run freebayes-parallel ${freebayes_cpu}
+nohup freebayes-parallel ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam.callable_regions.txt \
+26 \
 -f ${REF_GENOME_FASTA} \
 --standard-filters \
 --min-coverage 4 \
@@ -298,7 +314,7 @@ ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
 | vcfallelicprimitives --keep-geno \
 | vcffixup - \
 | vt normalize -r ${REF_GENOME_FASTA} -q - 2> /dev/null \
-| bgzip -c > ${VCF_DIR}/${BAM_PREFIX}.freebayes.norm.vcf.gz;
+| bgzip -c > ${VCF_DIR}/${BAM_PREFIX}.freebayes.norm.vcf.gz &
 
 ## Index the VCF File
 tabix ${VCF_DIR}/${BAM_PREFIX}.freebayes.norm.vcf.gz;
