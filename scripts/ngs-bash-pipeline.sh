@@ -267,8 +267,29 @@ function fix_ambiguous() {
 ##
 # cd /home/ubuntu/anaconda3/bin/
 
+# bamtools coverage -in aln.bam | coverage_to_regions.py ref.fa 500 >ref.fa.500.regions
+# freebayes-parallel ref.fa.500.regions 36 -f ref.fa aln.bam >out.vcf
+
+############################################################################
+## TASK: Write a command to call variants using samtools, bcftools: 
+## see https://github.com/samtools/bcftools/wiki/HOWTOs#mpileup-calling
+#############################################################################
+
+
+## Call variants using samtools and bcftools
+
+
+
 ## run freebayes-parallel
-freebayes-parallel <(fasta_generate_regions.py ${REF_GENOME_FASTA}.fai 100000) \
+## callable regions
+samtools view -bf 0x2 ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam \
+| bedtools bamtobed -i stdin \
+| bedtools mergebed -i stdin \
+| bedtools sort -i stdin \
+| awk '{print $1":"$2"-"$3}' > ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam.callable_regions.txt
+
+
+freebayes-parallel ${ALIGNMENT_DIR}/${BAM_PREFIX}.filtered.bam.callable_regions.txt \
 ${freebayes_cpu} \
 -f ${REF_GENOME_FASTA} \
 --standard-filters \
