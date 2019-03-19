@@ -8,7 +8,7 @@ set -o pipefail
 ###############################################
 ## ngs-bash-pipeline                         ##
 ###############################################
-##
+## ucheure
 ## Author: Stephen Newhouse
 ## Email: stephen.j.newhouse@gmail.com
 ## GitUrl: link to github code base
